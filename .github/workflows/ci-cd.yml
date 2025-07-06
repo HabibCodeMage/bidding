@@ -61,19 +61,17 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-    - name: Echo
-      run: echo "Hello, world! will add frontend tests here"
+
+    - name: Install Yarn
+      run: npm install -g yarn
     
-    # - name: Install Yarn
-    #   run: npm install -g yarn
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: yarn install --frozen-lockfile
     
-    # - name: Install frontend dependencies
-    #   working-directory: ./frontend
-    #   run: yarn install --frozen-lockfile
-    
-    # - name: Build frontend
-    #   working-directory: ./frontend
-    #   run: yarn build
+    - name: Build frontend
+      working-directory: ./frontend
+      run: yarn run test
 
   build-and-deploy:
     needs: [test-backend, test-frontend]
