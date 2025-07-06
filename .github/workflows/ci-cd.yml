@@ -9,7 +9,6 @@ on:
         default: 'staging'
         type: choice
         options:
-        - staging
         - production
       skip_testing:
         description: 'Skip running tests'
