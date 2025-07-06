@@ -76,11 +76,17 @@ A robust, scalable real-time bidding system built with NestJS backend and Next.j
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose
-- Node.js 20+ (for local development)
-- Yarn package manager
+- **Docker and Docker Compose** (version 2.0+)
+- **Node.js 20+** (for local development)
+- **Yarn package manager** (version 1.22+)
+- **Git** for cloning the repository
 
-### Running with Docker 
+### System Requirements
+- **RAM**: Minimum 4GB, Recommended 8GB
+- **Storage**: At least 2GB free space
+- **Ports**: 3000, 3001, 5432, 6379 must be available
+
+### Running with Docker (Recommended)
 
 1. **Clone the repository**
    ```bash
@@ -88,16 +94,149 @@ A robust, scalable real-time bidding system built with NestJS backend and Next.j
    cd real-time-bid
    ```
 
-2. **Start all services**
+2. **Environment Setup**
+   ```bash
+   # Copy environment files (if not already present)
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env.local
+   ```
+
+3. **Start all services**
    ```bash
    sudo docker compose up --build
    ```
 
-3. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
-   - PostgreSQL: localhost:5432
-   - Redis: localhost:6379
+4. **Wait for services to be ready**
+   - PostgreSQL: ~30 seconds
+   - Redis: ~10 seconds
+   - Backend: ~60 seconds (includes dependency installation)
+   - Frontend: ~45 seconds
+
+5. **Access the application**
+   - **Frontend**: http://localhost:3000
+   - **Backend API**: http://localhost:3001
+   - **PostgreSQL**: localhost:5432
+   - **Redis**: localhost:6379
+
+6. **Verify installation**
+   ```bash
+   # Check if all services are running
+   docker compose ps
+   
+   # Check backend 
+   curl http://localhost:3001
+   
+   # Check database connection
+   docker compose exec postgres pg_isready -U postgres
+   ```
+
+### Local Development Setup
+
+#### Backend Development
+
+1. **Install dependencies**
+   ```bash
+   cd backend
+   yarn install
+   ```
+
+2. **Environment configuration**
+   ```bash
+   # Create .env file
+   cp .env.example .env
+   
+   # Update database connection (if using local PostgreSQL)
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USERNAME=postgres
+   DB_PASSWORD=postgres
+   DB_NAME=realtime_bid
+   ```
+
+3. **Database setup**
+   ```bash
+   # Start PostgreSQL and Redis
+   docker compose up postgres redis -d
+   
+   # Wait for database to be ready
+   docker compose exec postgres pg_isready -U postgres
+   ```
+
+4. **Run development server**
+   ```bash
+   yarn start:dev
+   ```
+
+#### Frontend Development
+
+1. **Install dependencies**
+   ```bash
+   cd frontend
+   yarn install
+   ```
+
+2. **Environment configuration**
+   ```bash
+   # Create .env.local file
+   cp .env.example .env.local
+   
+   # Update API endpoints
+   NEXT_PUBLIC_API_URL=http://localhost:3001
+   NEXT_PUBLIC_WS_URL=http://localhost:3001
+   ```
+
+3. **Run development server**
+   ```bash
+   yarn dev
+   ```
+
+4. **Run tests**
+   ```bash
+   yarn test              # Run tests once
+   yarn test:watch        # Run tests in watch mode
+   yarn test:coverage     # Run tests with coverage
+   ```
+
+### Troubleshooting Local Setup
+
+#### Common Issues
+
+1. **Port conflicts**
+   ```bash
+   # Check what's using the ports
+   lsof -i :3000
+   lsof -i :3001
+   lsof -i :5432
+   lsof -i :6379
+   
+   # Kill processes if needed
+   kill -9 <PID>
+   ```
+
+2. **Docker issues**
+   ```bash
+   # Reset Docker environment
+   docker compose down -v
+   docker system prune -f
+   docker compose up --build
+   ```
+
+3. **Database connection issues**
+   ```bash
+   # Check database health
+   docker compose exec postgres pg_isready -U postgres
+   
+   # Reset database
+   docker compose down -v
+   docker compose up postgres redis -d
+   ```
+
+4. **Node modules issues**
+   ```bash
+   # Clear node modules and reinstall
+   rm -rf node_modules yarn.lock
+   yarn install
+   ```
   
 ## 📊 API Endpoints
 
@@ -172,7 +311,7 @@ yarn test              # Run unit tests
 - Production environment setup
 
 ### Docker Compose Services
-- **postgres**: PostgreSQL database with health checks
+- **postgres**: PostgreSQL database
 - **redis**: Redis cache with memory limits
 - **backend**: NestJS application with hot reload
 - **frontend**: Next.js application with hot reload
@@ -181,32 +320,108 @@ yarn test              # Run unit tests
 
 ### GitHub Actions Workflow
 
-The CI/CD pipeline includes:
+The CI/CD pipeline is configured in `.github/workflows/ci-cd.yml` and includes:
 
-1. **Testing Phase**
-   - Backend unit tests
-   - Frontend build verification
-   - Code quality checks
+#### 1. **Testing Phase**
+   - **Backend Unit Tests**: Jest-based testing with coverage reporting
+   - **Frontend Tests**: React Testing Library with component testing
+   - **Code Quality Checks**: ESLint and TypeScript compilation
+   - **Build Verification**: Ensures both frontend and backend build successfully
 
-2. **Build Phase**
-   - Docker image building
-   - Multi-stage optimization
-   - Security scanning
+#### 2. **Build Phase**
+   - **Docker Image Building**: Multi-stage builds for optimization
+   - **Security Scanning**: Vulnerability scanning of dependencies
+   - **Image Optimization**: Layer caching and size optimization
+   - **Artifact Storage**: Caching build artifacts for faster deployments
 
-3. **Deployment Phase**
-   - Automatic deployment to staging
-   - Manual deployment to production
-   - Environment-specific configurations
+#### 3. **Deployment Phase**
+   - **Staging Deployment**: Automatic deployment on main branch pushes
+   - **Production Deployment**: Manual deployment with environment selection
+   - **Environment Configuration**: Separate configs for staging/production
 
-### Pipeline Triggers
-- **Manual**: Workflow dispatch with environment selection
-- **Automatic**: On push to main branch (staging)
-- **Pull Requests**: Automated testing
+### Pipeline Configuration
+
+#### Workflow Triggers
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      skip_testing:
+        description: 'Skip running tests'
+        required: false
+        default: false
+        type: boolean
+      skip_build:
+        description: 'Skip building Docker images'
+        required: false
+        default: false
+        type: boolean
+```
+
+#### Job Dependencies
+- **test-backend** → **build-and-deploy**
+- **test-frontend** → **build-and-deploy**
+- **build-and-deploy** → **deploy-backend**
+- **build-and-deploy** → **deploy-frontend**
+
+### Running the Pipeline
+
+#### 1. **Manual Deployment**
+1. Go to GitHub repository → Actions tab
+2. Select "CI/CD Pipeline" workflow
+3. Click "Run workflow"
+4. Choose target environment (staging/production)
+5. Configure optional parameters:
+   - Skip testing: `false` (recommended)
+   - Skip build: `false` (recommended)
+6. Click "Run workflow"
 
 ### Deployment Platforms
-- **Frontend**: Vercel (automatic deployments)
-- **Backend**: Render (containerized deployment)
-- **Database**: Managed PostgreSQL service
+#### Frontend (Vercel)
+#### Backend (Render)
+#### Database free instance (Render)
+#### Redis free instance (Render)
+
+
+### Environment Configuration
+
+#### Staging Environment
+```env
+NODE_ENV=staging
+DB_HOST=staging-db.render.com
+REDIS_URL=redis://staging-redis.render.com
+CACHE_TTL=30000
+```
+
+#### Production Environment
+```env
+NODE_ENV=production
+DB_HOST=production-db.render.com
+REDIS_URL=redis://production-redis.render.com
+CACHE_TTL=60000
+```
+
+### Deployment Verification
+
+#### 1. **Health Checks**
+```bash
+# Backend check
+curl https://bidding-kgn3.onrender.com/
+
+# Frontend accessibility
+curl -I https://bidding-flax.vercel.app/
+
+# Database connectivity
+docker compose exec postgres pg_isready -U postgres
+```
 
 ## 🏛️ System Design Decisions
 
@@ -274,6 +489,147 @@ The CI/CD pipeline includes:
    - Proper indexing strategy
    - Query optimization
    - Connection management
+
+## 🎯 Development Approach & Problem-Solving Strategy
+
+### Problem Analysis & Solution Design
+
+#### Initial Requirements Analysis
+1. **Real-time Bidding System**: Required WebSocket communication for live updates
+2. **Concurrent Auctions**: Multiple auctions running simultaneously
+3. **Scalability**: System must handle high load and multiple users
+4. **Race Conditions**: Prevent bid conflicts and ensure data consistency
+5. **User Experience**: Responsive, intuitive interface with real-time feedback
+
+#### Key Architectural Decisions
+
+1. **Technology Stack Selection**
+   - **Backend**: NestJS for robust, scalable API development
+   - **Frontend**: Next.js 15 with React 19 for modern, performant UI
+   - **Database**: PostgreSQL for ACID compliance and complex queries
+   - **Caching**: Redis for session management and real-time data
+   - **Real-time**: Socket.IO for bidirectional communication
+
+2. **Database Design Strategy**
+   - **Normalized Schema**: Ensures data integrity and reduces redundancy
+   - **Indexed Fields**: Optimizes query performance for frequent operations
+   - **Foreign Key Constraints**: Maintains referential integrity
+   - **Timestamp Fields**: Tracks creation and update times for audit trails
+
+3. **Real-time Communication Architecture**
+   - **WebSocket Gateway**: Centralized real-time event handling
+   - **Room-based Messaging**: Targeted updates for specific auctions
+   - **Redis Pub/Sub**: Cross-instance communication for horizontal scaling
+   - **Instance Isolation**: Prevents message loops in multi-instance deployments
+
+### Robustness & Scalability Implementation
+
+#### 1. **Horizontal Scaling Strategy**
+```typescript
+// Instance-aware message routing
+if (message.instanceId !== (process.env.INSTANCE_ID || 'unknown')) {
+  this.server.to(`auction-${message.auctionId}`).emit('bidPlaced', data);
+}
+```
+
+#### 2. **Connection Resilience**
+```typescript
+// Automatic retry mechanism with exponential backoff
+let retries = 0;
+const maxRetries = 10;
+while (retries < maxRetries) {
+  try {
+    await this.redisService.subscribe(channel, handler);
+    break;
+  } catch (error) {
+    retries++;
+    await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+  }
+}
+```
+
+#### 3. **Database Connection Management**
+- **Connection Pooling**: Efficient resource utilization
+- **Transaction Management**: Ensures data consistency
+- **Query Optimization**: Indexed fields and optimized queries
+
+#### 4. **Caching Strategy**
+- **Session Management**: Redis-based user sessions
+- **Auction Data Caching**: Frequently accessed auction information
+- **TTL-based Invalidation**: Automatic cache cleanup
+- **Memory Management**: Redis memory limits and LRU policies
+
+### Race Condition Prevention
+
+#### 1. **Bid Validation Strategy**
+```typescript
+// Database-level constraints
+@Column('decimal', { precision: 10, scale: 2 })
+currentHighestBid: number;
+
+// Optimistic locking
+@VersionColumn()
+version: number;
+
+// Atomic operations
+@Transaction()
+async placeBid(bidData: PlaceBidDto): Promise<Bid> {
+  // Validate auction is active
+  // Check bid amount > current highest
+  // Atomic update with version check
+}
+```
+
+#### 2. **Auction Management**
+- **Server-side Time Validation**: Prevents client-side time manipulation
+- **Database Triggers**: Automatic auction status updates
+- **Scheduled Tasks**: Auction expiration handling
+- **State Machine**: Clear auction lifecycle management
+
+#### 3. **Concurrent Access Handling**
+- **Database Transactions**: ACID compliance for critical operations
+- **Row-level Locking**: Prevents concurrent bid conflicts
+- **Deadlock Prevention**: Proper transaction ordering
+- **Connection Pooling**: Efficient resource management
+
+### Performance Optimization Strategies
+
+#### 1. **Frontend Optimizations**
+- **Code Splitting**: Lazy loading of components and routes
+- **Bundle Optimization**: Tree shaking and minification
+- **Image Optimization**: Next.js automatic image optimization
+
+#### 2. **Backend Optimizations**
+- **Query Optimization**: Efficient database queries with proper indexing
+- **Response Caching**: Redis-based API response caching
+- **WebSocket Efficiency**: Minimal payload sizes and efficient event handling
+- **Memory Management**: Proper garbage collection and memory monitoring
+
+#### 3. **Database Optimizations**
+- **Index Strategy**: Composite indexes for complex queries
+- **Query Planning**: Optimized execution plans
+- **Connection Management**: Efficient connection pooling
+- **Data Archiving**: Historical data management
+
+### Testing Strategy
+
+#### 1. **Backend Testing**
+- **Unit Tests**: Individual service and controller testing
+
+#### 2. **Frontend Testing**
+- **Component Tests**: UI component behavior testing
+
+#### 3. **Load Testing**
+- **Concurrent Users**: Simulate multiple simultaneous users
+- **Bid Frequency**: Test high-frequency bidding scenarios
+- **Database Load**: Stress test database performance
+- **WebSocket Connections**: Test connection limits and stability
+
+#### 4. **Manual Testing**
+- **User Workflows**: Manual testing of complete user journeys
+- **Cross-browser Testing**: Testing across different browsers
+- **Mobile Responsiveness**: Testing on various screen sizes
+- **Real-time Scenarios**: Manual testing of live bidding scenarios
 
 ## 🔒 Security Considerations
 
