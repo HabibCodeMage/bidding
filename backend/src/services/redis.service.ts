@@ -15,7 +15,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const isProduction =
         this.configService.get<string>('NODE_ENV') === 'production';
       const redisUrl =
-        this.configService.get<string>('REDIS_URL') || 'redis://127.0.0.1:6379';
+        this.configService.get<string>('REDIS_URL') || 'redis://redis:6379';
       // Create publisher client
       this.publisher = new Redis(redisUrl, {
         tls: isProduction ? { rejectUnauthorized: false } : undefined,

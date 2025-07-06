@@ -46,6 +46,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
       - CACHE_TTL=30000
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -72,6 +73,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
       - CACHE_TTL=30000
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -98,6 +100,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
       - CACHE_TTL=30000
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend:/app
       - /app/node_modules

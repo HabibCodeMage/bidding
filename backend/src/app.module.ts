@@ -29,7 +29,7 @@ import { Bid } from './entities/bid.entity';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         store: redisStore as any,
-        url: configService.get<string>('REDIS_URL') || 'redis://localhost:6379',
+        url: configService.get<string>('REDIS_URL') || 'redis://redis:6379 ',
         ttl: configService.get<number>('CACHE_TTL') || 30000,
       }),
       inject: [ConfigService],
@@ -39,7 +39,7 @@ import { Bid } from './entities/bid.entity';
       useFactory: (configService: ConfigService) => {
         // Handle both DATABASE_URL and individual DB_* variables
         const databaseUrl = configService.get<string>('DATABASE_URL');
-        
+
         if (databaseUrl) {
           // Use DATABASE_URL if provided (Render style)
           return {
@@ -48,7 +48,10 @@ import { Bid } from './entities/bid.entity';
             entities: [User, Item, Auction, Bid],
             synchronize: true,
             logging: false,
-            ssl: { rejectUnauthorized: false },
+            ssl:
+              configService.get<string>('NODE_ENV') === 'production'
+                ? { rejectUnauthorized: false }
+                : false,
             // Connection pooling configuration
             extra: {
               connectionLimit: 20,
@@ -80,7 +83,10 @@ import { Bid } from './entities/bid.entity';
             entities: [User, Item, Auction, Bid],
             synchronize: configService.get<string>('NODE_ENV') !== 'production',
             logging: false,
-            ssl: { rejectUnauthorized: false },
+            ssl:
+              configService.get<string>('NODE_ENV') === 'production'
+                ? { rejectUnauthorized: false }
+                : false,
             // Connection pooling configuration
             extra: {
               connectionLimit: 20,
