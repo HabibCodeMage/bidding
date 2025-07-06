@@ -10,22 +10,46 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private configService: ConfigService) {}
 
-  async onModuleInit() {
+  onModuleInit() {
     try {
-      const redisConfig = {
-        host: this.configService.get<string>('REDIS_HOST') || 'localhost',
-        port: parseInt(
-          this.configService.get<string>('REDIS_PORT') || '6379',
-          10,
-        ),
-        password: this.configService.get<string>('REDIS_PASSWORD'),
-      };
-
+      const isProduction =
+        this.configService.get<string>('NODE_ENV') === 'production';
+      const redisUrl =
+        this.configService.get<string>('REDIS_URL') || 'redis://127.0.0.1:6379';
       // Create publisher client
-      this.publisher = new Redis(redisConfig);
+      this.publisher = new Redis(redisUrl, {
+        tls: isProduction ? { rejectUnauthorized: false } : undefined,
+      });
 
       // Create subscriber client
-      this.subscriber = new Redis(redisConfig);
+      this.subscriber = new Redis(redisUrl, {
+        tls: isProduction ? { rejectUnauthorized: false } : undefined,
+      });
+
+      // Handle connection events
+      this.publisher.on('error', (error) => {
+        console.error('Redis publisher error:', error);
+      });
+
+      this.subscriber.on('error', (error) => {
+        console.error('Redis subscriber error:', error);
+      });
+
+      this.publisher.on('connect', () => {
+        console.log('Redis publisher connected');
+      });
+
+      this.subscriber.on('connect', () => {
+        console.log('Redis subscriber connected');
+      });
+
+      this.publisher.on('ready', () => {
+        console.log('Redis publisher ready');
+      });
+
+      this.subscriber.on('ready', () => {
+        console.log('Redis subscriber ready');
+      });
 
       // Handle incoming messages
       this.subscriber.on('message', (channel, message) => {
@@ -93,4 +117,4 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   getClient(): Redis | null {
     return this.publisher;
   }
-} 
+}

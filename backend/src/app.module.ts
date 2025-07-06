@@ -29,48 +29,79 @@ import { Bid } from './entities/bid.entity';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         store: redisStore as any,
-        host: configService.get<string>('REDIS_HOST') || 'localhost',
-        port: parseInt(configService.get<string>('REDIS_PORT') || '6379', 10),
-        password: configService.get<string>('REDIS_PASSWORD'),
+        url: configService.get<string>('REDIS_URL') || 'redis://localhost:6379',
         ttl: configService.get<number>('CACHE_TTL') || 30000,
       }),
       inject: [ConfigService],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres' as const,
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
-        entities: [User, Item, Auction, Bid],
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
-        logging: false,
-        ssl:
-          configService.get<string>('NODE_ENV') === 'production'
-            ? { rejectUnauthorized: false }
-            : false,
-        // Connection pooling configuration
-        extra: {
-          connectionLimit: 20,
-          acquireTimeout: 60000,
-          timeout: 60000,
-          reconnect: true,
-        },
-        // Performance optimizations
-        maxQueryExecutionTime: 1000,
-        cache: {
-          duration: 30000, // 30 seconds
-        },
-        // Connection pool settings
-        poolSize: 20,
-        keepConnectionAlive: true,
-        // Query optimization
-        queryCache: true,
-        queryCacheDuration: 30000,
-      }),
+      useFactory: (configService: ConfigService) => {
+        // Handle both DATABASE_URL and individual DB_* variables
+        const databaseUrl = configService.get<string>('DATABASE_URL');
+        
+        if (databaseUrl) {
+          // Use DATABASE_URL if provided (Render style)
+          return {
+            type: 'postgres' as const,
+            url: databaseUrl,
+            entities: [User, Item, Auction, Bid],
+            synchronize: true,
+            logging: false,
+            ssl: { rejectUnauthorized: false },
+            // Connection pooling configuration
+            extra: {
+              connectionLimit: 20,
+              acquireTimeout: 60000,
+              timeout: 60000,
+              reconnect: true,
+            },
+            // Performance optimizations
+            maxQueryExecutionTime: 1000,
+            cache: {
+              duration: 30000, // 30 seconds
+            },
+            // Connection pool settings
+            poolSize: 20,
+            keepConnectionAlive: true,
+            // Query optimization
+            queryCache: true,
+            queryCacheDuration: 30000,
+          };
+        } else {
+          // Fallback to individual DB_* variables
+          return {
+            type: 'postgres' as const,
+            host: configService.get<string>('DB_HOST'),
+            port: configService.get<number>('DB_PORT'),
+            username: configService.get<string>('DB_USERNAME'),
+            password: configService.get<string>('DB_PASSWORD'),
+            database: configService.get<string>('DB_NAME'),
+            entities: [User, Item, Auction, Bid],
+            synchronize: configService.get<string>('NODE_ENV') !== 'production',
+            logging: false,
+            ssl: { rejectUnauthorized: false },
+            // Connection pooling configuration
+            extra: {
+              connectionLimit: 20,
+              acquireTimeout: 60000,
+              timeout: 60000,
+              reconnect: true,
+            },
+            // Performance optimizations
+            maxQueryExecutionTime: 1000,
+            cache: {
+              duration: 30000, // 30 seconds
+            },
+            // Connection pool settings
+            poolSize: 20,
+            keepConnectionAlive: true,
+            // Query optimization
+            queryCache: true,
+            queryCacheDuration: 30000,
+          };
+        }
+      },
       inject: [ConfigService],
     }),
     UsersModule,
